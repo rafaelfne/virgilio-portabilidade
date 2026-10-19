@@ -1,0 +1,14 @@
+set timeout 20
+spawn ./dist/prompts
+expect "Free?"
+send "y\r"
+expect "Nome do app"
+send "app-vibe\r"
+expect "senha"
+send "segredo123\r"
+expect "organiza"
+send "\033\[B"
+sleep 0.3
+send "\r"
+expect "platform"
+expect eof

@@ -1,0 +1,32 @@
+name: prompts
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  clack:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install
+      - run: bun build --compile prompts.ts --outfile dist/prompts
+      - name: drive with expect
+        if: runner.os != 'Windows'
+        run: |
+          command -v expect || (sudo apt-get update -qq && sudo apt-get install -y -qq expect > /dev/null)
+          expect drive.exp | tr -d '\r' | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g' | grep -E 'platform|segredo123' || true
+          expect drive.exp | grep -q '"senhaTamanho":10'
+          ! expect drive.exp | grep -q 'segredo123'
+      - name: drive with ConPTY
+        if: runner.os == 'Windows'
+        run: |
+          pip install pywinpty==2.0.15
+          python drive_windows.py
