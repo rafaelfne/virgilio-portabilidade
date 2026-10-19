@@ -1,0 +1,29 @@
+name: matrix
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  spike:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install
+      - run: bun build --compile main.ts --outfile dist/virgilio
+      - name: run without keyring service
+        run: ./dist/virgilio
+        shell: bash
+      - name: run with gnome-keyring
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dbus-x11 gnome-keyring > /dev/null
+          dbus-run-session -- sh -c 'echo -n teste | gnome-keyring-daemon --unlock --components=secrets > /dev/null 2>&1; ./dist/virgilio'
