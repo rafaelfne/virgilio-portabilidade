@@ -1,0 +1,37 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/release.yml]
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-13, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: install with windows powershell
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          irm https://github.com/Omnex-Labs/virgilio-releases/releases/latest/download/install.ps1 | iex
+          & "$env:LOCALAPPDATA\Virgilio\bin\virgilio.exe" --version
+          [Environment]::GetEnvironmentVariable("Path", "User")
+      - name: install with sh
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://github.com/Omnex-Labs/virgilio-releases/releases/latest/download/install.sh | sh
+          ~/.virgilio/bin/virgilio --version
+      - name: pre-commit blocks a destructive migration
+        shell: bash
+        run: |
+          bin="$HOME/.virgilio/bin/virgilio"
+          if [ "$RUNNER_OS" = Windows ]; then bin="$(cygpath -u "$LOCALAPPDATA")/Virgilio/bin/virgilio.exe"; fi
+          git init -q r && cd r && git config user.email t@t && git config user.name t
+          mkdir -p supabase/migrations && echo "drop table t;" > supabase/migrations/1.sql && git add -A
+          set +e; "$bin" hook pre-commit; code=$?; set -e
+          echo "exit=$code"
+          test "$code" = 1
